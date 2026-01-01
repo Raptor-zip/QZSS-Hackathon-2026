@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QZSS Power Control</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .switch-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px auto;
+            max-width: 350px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 5px;
+        }
+
+        .btn-on {
+            background-color: #28a745;
+        }
+
+        .btn-off {
+            background-color: #dc3545;
+        }
+
+        .btn:active {
+            opacity: 0.8;
+        }
+
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>電源タップ操作</h1>
+
+    <div class="switch-container">
+        <span>コンセント 1</span>
+        <div>
+            <button class="btn btn-on" onclick="setRelay(1, true)">ON</button>
+            <button class="btn btn-off" onclick="setRelay(1, false)">OFF</button>
+        </div>
+    </div>
+    <div class="switch-container">
+        <span>コンセント 2</span>
+        <div>
+            <button class="btn btn-on" onclick="setRelay(2, true)">ON</button>
+            <button class="btn btn-off" onclick="setRelay(2, false)">OFF</button>
+        </div>
+    </div>
+    <div class="switch-container">
+        <span>コンセント 3</span>
+        <div>
+            <button class="btn btn-on" onclick="setRelay(3, true)">ON</button>
+            <button class="btn btn-off" onclick="setRelay(3, false)">OFF</button>
+        </div>
+    </div>
+    <div class="switch-container">
+        <span>コンセント 4</span>
+        <div>
+            <button class="btn btn-on" onclick="setRelay(4, true)">ON</button>
+            <button class="btn btn-off" onclick="setRelay(4, false)">OFF</button>
+        </div>
+    </div>
+
+    <script>
+        async function setRelay(id, state) {
+            try {
+                const response = await fetch('/api/relay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ relay: id, state: state })
+                });
+                console.log('Set Relay', id, state);
+            } catch (error) {
+                alert('通信エラー');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+
+</html>
