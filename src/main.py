@@ -11,7 +11,7 @@ from src.hw.power_control import RelayController
 from src.hw.button_handler import ButtonHandler
 from src.hw.audio import AudioHandler
 from src.core.state_machine import StateMachine
-from src.core.command_server import CommandServer
+from src.client.socket_client import SocketIOClient
 from src.gui.app_window import AppWindow
 
 def main():
@@ -23,25 +23,28 @@ def main():
         logger.info("Initializing Hardware...")
         qz1 = QZ1Handler()
         imu = IMUHandler()
-        power = RelayController()
+
+        # Define callback wrapper for PowerControl
+        # We need access to socket_client, which is defined later.
+        # Use a mutable container or late binding.
+        client_container = {}
+        def power_callback(status):
+            if 'client' in client_container:
+                client_container['client'].emit_status(status)
+
+        power = RelayController(callback=power_callback)
         audio = AudioHandler()
 
         logger.info("Initializing Core Logic...")
         sm = StateMachine(qz1, imu, power, audio)
 
-        logger.info("Initializing Command Server...")
-        cmd_server = CommandServer(sm)
-        cmd_server.start()
+        logger.info("Initializing Socket.IO Client...")
+        socket_client = SocketIOClient(sm)
+        client_container['client'] = socket_client
+        socket_client.start()
 
         logger.info("Initializing Controls...")
         # Bind buttons to SM
-        def btn_callback_wrapper(btn_object):
-             # Extract ID from button object or map pins?
-             # ButtonHandler logic: we passed callbacks. But we need SM initialized first.
-             # Or we can assign specific callbacks now.
-             pass
-
-        # Since ButtonHandler expects callbacks or direct assignment:
         buttons = ButtonHandler()
         # Map buttons to SM actions
         buttons.assign_callback(1, lambda: sm.on_button_press(1))
@@ -63,7 +66,7 @@ def main():
         logger.critical(f"Fatal Error: {e}", exc_info=True)
     finally:
         logger.info("Cleaning up...")
-        if 'cmd_server' in locals(): cmd_server.stop()
+        if 'socket_client' in locals(): socket_client.stop()
         if 'sm' in locals(): sm.stop()
         if 'buttons' in locals(): buttons.cleanup()
 

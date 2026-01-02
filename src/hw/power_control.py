@@ -2,8 +2,9 @@ from gpiozero import OutputDevice
 import logging
 
 class RelayController:
-    def __init__(self):
+    def __init__(self, callback=None):
         self.logger = logging.getLogger(__name__)
+        self.callback = callback # Function to call on state change
         # Relay GPIO configuration (Based on test/relay_keyboard.py)
         # Low active assumption or High active?
         # test/relay_keyboard.py used active_high=True
@@ -34,6 +35,7 @@ class RelayController:
             else:
                 self.relays[relay_id].off()
             self.logger.info(f"Relay {relay_id} set to {'ON' if state else 'OFF'}")
+            if self.callback: self.callback(self.get_status())
 
     def toggle(self, relay_id):
         """Toggle relay state"""
@@ -48,12 +50,14 @@ class RelayController:
         for r in self.relays.values():
             r.on()
         self.logger.info("All relays ON")
+        if self.callback: self.callback(self.get_status())
 
     def all_off(self):
         """Turn ALL relays OFF (Safety Cutoff)"""
         for r in self.relays.values():
             r.off()
         self.logger.info("All relays OFF (CUTOFF)")
+        if self.callback: self.callback(self.get_status())
 
     def get_status(self):
         return {k: v.value for k, v in self.relays.items()}

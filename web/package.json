@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@types/socket.io": "^3.0.1",
     "body-parser": "^2.2.1",
     "express": "^5.2.1",
     "socket.io": "^4.8.3"

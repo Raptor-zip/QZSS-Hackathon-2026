@@ -1,67 +1,53 @@
 import express from 'express';
-import type { Request, Response } from 'express';
-import net from 'net';
+import { createServer } from 'http';
+import { Server, Socket } from 'socket.io';
 import path from 'path';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: { origin: "*" }
+});
+
 const port = 3000;
-const PYTHON_PORT = 65432;
-const PYTHON_HOST = '127.0.0.1';
 
 app.use(express.static('public'));
 app.use(express.json());
 
-interface Command {
-    cmd: string;
-    relay?: number;
-    state?: boolean;
-}
+// Relay Logic
+io.on('connection', (socket: Socket) => {
+    console.log('Client connected:', socket.id);
 
-// Function to send command to Python
-function sendToPython(command: Command): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const client = new net.Socket();
-
-        client.connect(PYTHON_PORT, PYTHON_HOST, () => {
-            console.log('Connected to Python');
-            client.write(JSON.stringify(command));
-            client.end();
-        });
-
-        client.on('data', (data) => {
-            console.log('Received from Python: ' + data.toString());
-            client.destroy(); // kill client after server's response
-            resolve(data.toString());
-        });
-
-        client.on('error', (err) => {
-            console.error("Python Connection Error: " + err.message);
-            client.destroy();
-            reject(err);
-        });
+    // When Python client sends Status Update
+    socket.on('s2c_status', (data) => {
+        console.log('Relaxing status update to all clients:', data);
+        // Broadcast to all web clients (and the python client itself, though unrelated)
+        io.emit('s2c_status', data);
     });
-}
 
-// Toggle Endpoint (Legacy support if needed, or remove)
-app.post('/api/toggle', (req: Request, res: Response) => {
+    // When Web Client sends Control Command
+    socket.on('c2s_control', (data) => {
+        console.log('Control command received:', data);
+        // Relay to Python listeners
+        // We broadcast to everyone, Python client will hear it and act.
+        io.emit('c2s_control', data);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+    });
+});
+
+
+// Legacy API Support (Optional - redirects to socket emit)
+app.post('/api/relay', (req, res) => {
     const relayId = req.body.relay;
-    console.log(`Toggling Relay ${relayId}`);
-
-    sendToPython({ cmd: 'toggle', relay: relayId });
+    const state = req.body.state;
+    console.log(`Legacy API: Setting Relay ${relayId} to ${state}`);
+    io.emit('c2s_control', { cmd: 'set', relay: relayId, state: state });
     res.json({ success: true });
 });
 
-// Set State Endpoint
-app.post('/api/relay', (req: Request, res: Response) => {
-    const relayId = Number(req.body.relay);
-    const state = Boolean(req.body.state);
-
-    console.log(`Setting Relay ${relayId} to ${state ? 'ON' : 'OFF'}`);
-
-    sendToPython({ cmd: 'set', relay: relayId, state: state });
-    res.json({ success: true });
-});
-
-app.listen(port, () => {
-    console.log(`Web Controller listening at http://0.0.0.0:${port}`);
+httpServer.listen(port, () => {
+    console.log(`Socket.IO Server listening at http://0.0.0.0:${port}`);
 });

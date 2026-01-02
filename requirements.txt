@@ -3,3 +3,6 @@ dearpygui
 gpiozero
 smbus2
 pyserial
+pygame
+requests
+python-socketio[client]
